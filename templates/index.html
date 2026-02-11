@@ -271,6 +271,7 @@
                         <th>Username</th>
                         <th>Created At</th>
                         <th>Status</th>
+                        <th>action</th>
                     </tr>
                 </thead>
                 <tbody id="usersTableBody">
@@ -288,119 +289,151 @@
     </div>
     
     <script>
-        // Load users on page load
-        window.onload = function() {
-            loadUsers();
-        };
-        
-        // Load users from API
-        async function loadUsers() {
-            try {
-                const response = await fetch('/api/users');
-                const data = await response.json();
-                
-                const tbody = document.getElementById('usersTableBody');
-                
-                if (data.users && data.users.length > 0) {
-                    tbody.innerHTML = data.users.map(user => `
-                        <tr>
-                            <td><strong>${user.id}</strong></td>
-                            <td><strong>${user.username}</strong></td>
-                            <td>${formatDate(user.created_at)}</td>
-                            <td><span class="badge">Active</span></td>
-                        </tr>
-                    `).join('');
-                    
-                    document.getElementById('totalUsers').textContent = data.count;
-                } else {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="4">
-                                <div class="empty-state">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-                                    </svg>
-                                    <h3>No users found</h3>
-                                    <p>Add your first user to get started</p>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                    document.getElementById('totalUsers').textContent = '0';
-                }
-                
-                updateLastUpdated();
-                
-            } catch (error) {
-                console.error('Error loading users:', error);
-                showMessage('Failed to load users', 'error');
-            }
-        }
-        
-        // Add new user
-        async function addUser() {
-            const username = document.getElementById('newUsername').value.trim();
+    // Load users on page load
+    window.onload = function() {
+        loadUsers();
+    };
+    
+    // Load users from API
+    async function loadUsers() {
+        try {
+            const response = await fetch('/api/users');
+            const data = await response.json();
             
-            if (!username) {
-                showMessage('Please enter a username', 'error');
-                return;
+            const tbody = document.getElementById('usersTableBody');
+            
+            if (data.users && data.users.length > 0) {
+                tbody.innerHTML = data.users.map(user => `
+                    <tr>
+                        <td><strong>${user.id}</strong></td>
+                        <td><strong>${user.username}</strong></td>
+                        <td>${formatDate(user.created_at)}</td>
+                        <td><span class="badge">Active</span></td>
+                        <td>
+                            <button class="btn btn-primary" onclick="deleteUser('${user.username}')">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                document.getElementById('totalUsers').textContent = data.count;
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5">
+                            <div class="empty-state">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                                </svg>
+                                <h3>No users found</h3>
+                                <p>Add your first user to get started</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('totalUsers').textContent = '0';
             }
             
-            try {
-                const response = await fetch('/api/users', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ username: username })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    showMessage(`User "${username}" added successfully!`, 'success');
-                    document.getElementById('newUsername').value = '';
-                    loadUsers();
-                } else {
-                    showMessage(data.message || 'Failed to add user', 'error');
-                }
-                
-            } catch (error) {
-                console.error('Error adding user:', error);
-                showMessage('Failed to add user', 'error');
-            }
-        }
-        
-        // Show message
-        function showMessage(text, type) {
-            const messageDiv = document.getElementById('message');
-            messageDiv.textContent = text;
-            messageDiv.className = `message ${type} show`;
+            updateLastUpdated();
             
-            setTimeout(() => {
-                messageDiv.classList.remove('show');
-            }, 5000);
+        } catch (error) {
+            console.error('Error loading users:', error);
+            showMessage('Failed to load users', 'error');
         }
-        
-        // Format date
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleString();
+    }
+
+    // ✅ DELETE USER FUNCTION
+    async function deleteUser(username) {
+        if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
+            return;
         }
-        
-        // Update last updated time
-        function updateLastUpdated() {
-            const now = new Date();
-            document.getElementById('lastUpdated').textContent = 
-                now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
-        
-        // Allow Enter key to add user
-        document.getElementById('newUsername').addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                addUser();
+
+        try {
+            const response = await fetch(`/api/users/${username}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showMessage(`User "${username}" deleted successfully`, 'success');
+                loadUsers(); // Refresh table
+            } else {
+                showMessage(data.message || 'Failed to delete user', 'error');
             }
-        });
-    </script>
+
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            showMessage('Failed to delete user', 'error');
+        }
+    }
+    
+    // Add new user
+    async function addUser() {
+        const username = document.getElementById('newUsername').value.trim();
+        
+        if (!username) {
+            showMessage('Please enter a username', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username: username })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                showMessage(`User "${username}" added successfully!`, 'success');
+                document.getElementById('newUsername').value = '';
+                loadUsers();
+            } else {
+                showMessage(data.message || 'Failed to add user', 'error');
+            }
+            
+        } catch (error) {
+            console.error('Error adding user:', error);
+            showMessage('Failed to add user', 'error');
+        }
+    }
+    
+    // Show message
+    function showMessage(text, type) {
+        const messageDiv = document.getElementById('message');
+        messageDiv.textContent = text;
+        messageDiv.className = `message ${type} show`;
+        
+        setTimeout(() => {
+            messageDiv.classList.remove('show');
+        }, 5000);
+    }
+    
+    // Format date
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleString();
+    }
+    
+    // Update last updated time
+    function updateLastUpdated() {
+        const now = new Date();
+        document.getElementById('lastUpdated').textContent = 
+            now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // Allow Enter key to add user
+    document.getElementById('newUsername').addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            addUser();
+        }
+    });
+</script>
+
 </body>
 </html>
